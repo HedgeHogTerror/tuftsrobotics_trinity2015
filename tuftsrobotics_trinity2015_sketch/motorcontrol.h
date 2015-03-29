@@ -13,7 +13,7 @@
 #define KDspd        0.1
 #define KI           0.3
 
-#define OPT          300
+#define OPT          290
 
 class MotorControl{
 	public:

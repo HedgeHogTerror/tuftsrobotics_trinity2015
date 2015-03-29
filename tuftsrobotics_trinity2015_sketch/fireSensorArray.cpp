@@ -32,10 +32,12 @@ int FireSensorArray::fireAngle(){
   int curMaxI = -1;
   long weightedAngle = 0;
   long total = 0;
+  int nSamples = 10;
   
   //Find max sensor to drive angle measurement
   for(int i = 0; i < NUMFIRESENSORS; i++) {
-    long reading = analogRead(fireSensePins[i]);
+    long reading = 0;
+    reading = analogRead(fireSensePins[i]);
     if(reading > curMax) {
       curMax = reading;
       curMaxI = i;
@@ -45,7 +47,8 @@ int FireSensorArray::fireAngle(){
   for (int i=curMaxI-1; i<=curMaxI+1; i++)
   {
     if (i>=0 && i<NUMFIRESENSORS){
-        long reading = analogRead(fireSensePins[i]);
+        long reading = 0;
+        reading = analogRead(fireSensePins[i]);
         Serial.println(reading);
         long sensorAngle = map(i,0,NUMFIRESENSORS-1,60,-60);
         long weight = (100*reading);

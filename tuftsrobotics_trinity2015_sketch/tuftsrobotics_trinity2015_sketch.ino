@@ -272,7 +272,7 @@ void testWallFollow(){
   mcontrol.drive(rightback,rightfront,255);
   
   if(avgSensorVal(distFrontPin,3)>FRONTOBSTACLEDIST){
-    rotCCW90();
+    rotCCWUntilParallel();
   }
 }
 
@@ -311,7 +311,7 @@ void statemachine() {
       
       //Is there something in front of me? If so, rotate 90 CCW
       if(avgSensorVal(distFrontPin,3)>FRONTOBSTACLEDIST){
-        rotCCW90();
+        rotCCWUntilParallel();
       }
       //Wall follow
       mcontrol.drive(avgSensorVal(distRightBackPin,3),avgSensorVal(distRightFrontPin,3),255);
@@ -332,7 +332,7 @@ void statemachine() {
       //Look for front obstacles:
       //Is there something in front of me? If so, rotate 90 CCW
       if(avgSensorVal(distFrontPin,3)>FRONTOBSTACLEDIST){
-        rotCCW90();
+        rotCCWUntilParallel();
       }
       mcontrol.drive(avgSensorVal(distRightBackPin,3),avgSensorVal(distRightFrontPin,3),255);
       
@@ -509,7 +509,9 @@ void statemachine() {
       break;
       
     case RETURNHOME:
-
+      returnHome(numRoomsChecked);
+      STATE = HOMEREACHED;
+      
     break;
     
     case HOMEREACHED:
@@ -580,30 +582,82 @@ void sensorDiagnostics(){
 
 //Rotate clockwise 90 degrees
 void rotCW90(){
-  leftMotor.drive(180);
-  rightMotor.drive(-220);
-  delay(500);
+  leftMotor.drive(170);
+  rightMotor.drive(-230);
+  delay(450);
   leftMotor.brake();
   rightMotor.brake();
 }
 
 //Rotate counterclockwise 90 degrees
 void rotCCW90(){
-  leftMotor.drive(-220);
-  rightMotor.drive(180);
-  delay(400);
+  leftMotor.drive(-230);
+  rightMotor.drive(170);
+  delay(450);
+  leftMotor.brake();
+  rightMotor.brake();
+}
+
+void rotCCWUntilParallel(){
+  while(true){
+    leftMotor.drive(-200);
+    rightMotor.drive(150);
+    int rightfront = avgSensorVal(distRightFrontPin,3);
+    int rightback = avgSensorVal(distRightBackPin,3);
+    int front = avgSensorVal(distFrontPin,3);
+    if(abs(rightfront - rightback) < 50){
+      break;
+    }
+  }
+  leftMotor.brake();
+  rightMotor.brake();
+}
+
+void rotCWUntilParallel(){
+  while(true){
+    leftMotor.drive(150);
+    rightMotor.drive(-200);
+    int rightfront = avgSensorVal(distRightFrontPin,3);
+    int rightback = avgSensorVal(distRightBackPin,3);
+    int front = avgSensorVal(distFrontPin,3);
+    if(abs(rightfront - rightback) < 50){
+      break;
+    }
+  }
   leftMotor.brake();
   rightMotor.brake();
 }
 
 void leaveRoom(){
   //Rotate 180, go forward, rot cw, go forward if possible
-  leftMotor.drive(-180);
+  leftMotor.drive(-200);
   rightMotor.drive(180);
   delay(700);
-  leftMotor.drive(200);
-  rightMotor.drive(200);
-  delay(800);
+  /*
+  while(!isLineSensed()){
+    mcontrol.drive(avgSensorVal(distRightBackPin,3),avgSensorVal(distRightFrontPin,3),255);
+    if(avgSensorVal(distFrontPin,3)>FRONTOBSTACLEDIST){
+      rotCCWUntilParallel();
+    }
+  }
+  while(isLineSensed()){
+    mcontrol.drive(avgSensorVal(distRightBackPin,3),avgSensorVal(distRightFrontPin,3),255);
+    if(avgSensorVal(distFrontPin,3)>FRONTOBSTACLEDIST){
+      rotCCWUntilParallel();
+    }
+  }
+  int wallFollowDelayStart = millis();
+  while(millis() - wallFollowDelayStart < 500){
+    mcontrol.drive(avgSensorVal(distRightBackPin,3),avgSensorVal(distRightFrontPin,3),255);
+    if(avgSensorVal(distFrontPin,3)>FRONTOBSTACLEDIST){
+      rotCCWUntilParallel();
+    }
+  }
+  */
+  
+  leftMotor.drive(250);
+  rightMotor.drive(250);
+  delay(900);  
   if(avgSensorVal(distRightBackPin,3)<WALLONRIGHT && avgSensorVal(distRightFrontPin,3)<WALLONRIGHT){
     rotCW90();
     delay(100);
@@ -611,8 +665,10 @@ void leaveRoom(){
     rightMotor.drive(250);
     delay(500);
   }
+  
   leftMotor.brake();
   rightMotor.brake();
+  delay(200);
 }
 
 void extinguish(){
@@ -655,4 +711,106 @@ int debounce(int pin){
     }
   }
   return initial;
+}
+
+bool isLineSensed(){
+  #if LINESENSING_INVERTED
+    return (analogRead(lineSensePin)>LINESENSED);
+  #else
+    return (analogRead(lineSensePin)<LINESENSED);
+  #endif 
+}
+
+void returnHome(int numRoomsSearched){
+  delay(500);
+  rotCCW90();
+  leftMotor.drive(200);
+  rightMotor.drive(200);
+  delay(450);
+  rightMotor.brake();
+  leftMotor.brake();
+  if(numRoomsSearched == 1){
+    //exit room
+    #if LINESENSING_INVERTED
+    while(analogRead(lineSensePin)<LINESENSED){
+    #else
+    while(analogRead(lineSensePin)>LINESENSED){
+    #endif
+      mcontrol.drive(avgSensorVal(distRightBackPin,3),avgSensorVal(distRightFrontPin,3),150);
+    }
+    //stop on line
+    rightMotor.brake();
+    leftMotor.brake();
+    delay(250);
+    //drive forward
+    leftMotor.drive(150);
+    rightMotor.drive(150);
+    delay(800);
+    //begin wallfollow, stop when hallway on right
+    int rightDist = 0;
+    while(rightDist<300){
+      mcontrol.drive(avgSensorVal(distRightBackPin,3),avgSensorVal(distRightFrontPin,3),150);
+      rightDist=0;
+      for(int x=0; x<5; x++){
+        rightDist+=analogRead(distRightBackPin)/5;
+      }
+    }
+    //stop in middle of hallway
+    delay(800);
+    rightMotor.brake();
+    leftMotor.brake();
+    //turn 90 degrees
+    delay(250);
+    rotCCW90();
+    //drive forward then begin wallfollowing
+    leftMotor.drive(150);
+    rightMotor.drive(150);
+    delay(2000);
+    
+    rightDist=0;
+    while(rightDist<300){
+      mcontrol.drive(avgSensorVal(distRightBackPin,3),avgSensorVal(distRightFrontPin,3),150);
+      rightDist=0;
+      for(int x=0; x<5; x++){
+        rightDist+=analogRead(distRightBackPin)/5;
+      }
+    }
+    //stop at hallway entrance
+    rightMotor.brake();
+    leftMotor.brake();
+    delay(1000);
+    //drive forward until the pad is hit
+    #if LINESENSING_INVERTED
+    while(analogRead(lineSensePin)<LINESENSED){
+    #else
+    while(analogRead(lineSensePin)>LINESENSED){
+    #endif
+      leftMotor.drive(150);
+      rightMotor.drive(150);
+    }
+    //stop
+    rightMotor.brake();
+    leftMotor.brake();
+    delay(1000);
+    //drive forward to center on pad
+    leftMotor.drive(150);
+    rightMotor.drive(150);
+    delay(700);
+    
+    rightMotor.brake();
+    leftMotor.brake();
+    
+  }
+  if(numRoomsChecked == 2){
+    
+  }
+  if(numRoomsChecked == 3){
+    
+  }
+  if(numRoomsChecked == 4){
+    
+  }
+  if(numRoomsChecked == 5){
+    
+  }
 }

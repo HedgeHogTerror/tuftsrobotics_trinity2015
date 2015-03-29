@@ -311,6 +311,14 @@ void statemachine() {
       
       //Is there something in front of me? If so, rotate 90 CCW
       if(avgSensorVal(distFrontPin,3)>FRONTOBSTACLEDIST){
+        
+        //Avoid potential dog
+        leftMotor.drive(-160);
+        rightMotor.drive(-160);
+        delay(200);
+        leftMotor.brake();
+        rightMotor.brake();
+        
         rotCCWUntilParallel();
       }
       //Wall follow
@@ -361,9 +369,6 @@ void statemachine() {
       break;
       
     case INROOM:
-    
-      numRoomsChecked++;
-      
       fireSensed = false;
       
       sweepStartTime = millis();
